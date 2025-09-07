@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>To-Do Manager</title>
+    <style>
+        .done {
+            text-decoration: line-through;
+            color: gray;
+        }
+        .pending {
+            color: black;
+        }
+        .task-item {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .task-text {
+            flex-grow: 1;
+        }
+        .task-id {
+            font-weight: bold;
+            width: 30px;
+        }
+        button {
+            min-width: 70px;
+            cursor: pointer;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 4px;
+            font-size: 1em;
+        }
+    </style>
+    <script>
+        let editingTaskId = null;
+
+        async function loadTasks() {
+            const response = await fetch('/tasks');
+            const tasks = await response.json();
+            const list = document.getElementById('task-list');
+            list.innerHTML = '';
+            const countDisplay = document.getElementById('task-count');
+            countDisplay.textContent = `Total tasks: ${tasks.length}`;
+
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'task-item';
+
+                const taskIdSpan = document.createElement('span');
+                taskIdSpan.className = 'task-id';
+                taskIdSpan.textContent = task.id;
+                li.appendChild(taskIdSpan);
+
+                if (editingTaskId === task.id) {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.id = 'edit-input';
+                    input.value = task.task;
+                    li.appendChild(input);
+
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = 'Update';
+                    saveBtn.onclick = () => saveUpdatedTask(task.id);
+                    li.appendChild(saveBtn);
+
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = 'Cancel';
+                    cancelBtn.onclick = () => { editingTaskId = null; loadTasks(); };
+                    li.appendChild(cancelBtn);
+                } else {
+                    const taskText = document.createElement('span');
+                    taskText.className = 'task-text';
+                    taskText.textContent = task.task;
+                    taskText.classList.toggle('done', task.done);
+                    taskText.classList.toggle('pending', !task.done);
+                    li.appendChild(taskText);
+
+                    const doneCheckbox = document.createElement('input');
+                    doneCheckbox.type = 'checkbox';
+                    doneCheckbox.checked = task.done;
+                    doneCheckbox.title = 'Mark Done/Undone';
+                    doneCheckbox.onclick = () => toggleDone(task.id, doneCheckbox.checked);
+                    li.appendChild(doneCheckbox);
+
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'Update';
+                    editBtn.onclick = () => {
+                        editingTaskId = task.id;
+                        loadTasks();
+                    };
+                    li.appendChild(editBtn);
+
+                    const delBtn = document.createElement('button');
+                    delBtn.textContent = 'Delete';
+                    delBtn.onclick = () => deleteTask(task.id);
+                    li.appendChild(delBtn);
+                }
+
+                list.appendChild(li);
+            });
+        }
+
+        async function addTask() {
+            const input = document.getElementById('new-task');
+            const taskText = input.value.trim();
+            if (!taskText) return alert("Please enter a task.");
+            await fetch('/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task: taskText })
+            });
+            input.value = '';
+            loadTasks();
+        }
+
+        async function saveUpdatedTask(taskId) {
+            const updatedText = document.getElementById('edit-input').value.trim();
+            if (!updatedText) return alert("Task text cannot be empty.");
+            await fetch(`/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task: updatedText })
+            });
+            editingTaskId = null;
+            loadTasks();
+        }
+
+        async function toggleDone(taskId, done) {
+            await fetch(`/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ done: done })
+            });
+            loadTasks();
+        }
+
+        async function deleteTask(taskId) {
+            await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
+            loadTasks();
+        }
+
+        window.onload = loadTasks;
+    </script>
+</head>
+<body>
+    <h1>To-Do Manager</h1>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <input id="new-task" type="text" placeholder="Enter new task" style="flex-grow:1; padding:6px; font-size:1em;"/>
+        <button onclick="addTask()" style="min-width: 70px;">Add</button>
+    </div>
+    <div id="task-count" style="margin-bottom: 10px; font-weight: bold;">Total tasks: 0</div>
+    <ul id="task-list" style="list-style-type:none; padding-left:0;"></ul>
+</body>
+</html>
