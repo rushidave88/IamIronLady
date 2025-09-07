@@ -15,7 +15,7 @@
 4. Open a terminal in that folder and run: "python app.py"
 5. Open a web browser and go to:  http://127.0.0.1:5000/
 6. Use the web interface to add, update, mark done/undone, and delete tasks.
-
+.
 ## Features Implemented
 
 - Add new tasks
